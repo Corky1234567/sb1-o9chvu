@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  username      String     @unique
+  passwordHash  String     @db.Text
+  avatar        String?    @db.Text
+  bio          String?    @db.Text
+  location     String?    @db.VarChar(255)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  activities   Activity[] @relation("Organizer")
+  participations Activity[] @relation("Participants")
+  errands      Errand[]   @relation("ErrandCreator")
+  takenErrands Errand[]   @relation("ErrandTaker")
+  interests    Interest[]
+  friends      Friend[]   @relation("UserFriends")
+  friendsOf    Friend[]   @relation("FriendOf")
+
+  @@index([email])
+  @@index([username])
+}
+
+model Activity {
+  id              String    @id @default(uuid())
+  title           String    @db.VarChar(255)
+  description     String    @db.Text
+  date            DateTime
+  location        String    @db.VarChar(255)
+  maxParticipants Int
+  organizerId     String
+  organizer       User      @relation("Organizer", fields: [organizerId], references: [id])
+  participants    User[]    @relation("Participants")
+  tags            Tag[]
+  images          Image[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([organizerId])
+  @@index([date])
+}
+
+model Errand {
+  id          String    @id @default(uuid())
+  title       String    @db.VarChar(255)
+  description String    @db.Text
+  deadline    DateTime
+  location    String    @db.VarChar(255)
+  reward      Decimal   @db.Decimal(10, 2)
+  status      String    @default("open") @db.VarChar(20)
+  creatorId   String
+  creator     User      @relation("ErrandCreator", fields: [creatorId], references: [id])
+  takerId     String?
+  taker       User?     @relation("ErrandTaker", fields: [takerId], references: [id])
+  tags        Tag[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([creatorId])
+  @@index([takerId])
+  @@index([status])
+  @@index([deadline])
+}
+
+model Interest {
+  id    String @id @default(uuid())
+  name  String @unique @db.VarChar(100)
+  users User[]
+
+  @@index([name])
+}
+
+model Tag {
+  id         String     @id @default(uuid())
+  name       String     @unique @db.VarChar(50)
+  activities Activity[]
+  errands    Errand[]
+
+  @@index([name])
+}
+
+model Image {
+  id         String   @id @default(uuid())
+  url        String   @db.Text
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([activityId])
+}
+
+model Friend {
+  id        String   @id @default(uuid())
+  userId    String
+  friendId  String
+  status    String   @default("pending") @db.VarChar(20)
+  user      User     @relation("UserFriends", fields: [userId], references: [id])
+  friend    User     @relation("FriendOf", fields: [friendId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+  @@index([status])
+}
